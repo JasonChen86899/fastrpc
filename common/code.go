@@ -1,4 +1,4 @@
-package rpc
+package common
 
 import (
 	"encoding/json"
@@ -6,18 +6,18 @@ import (
 
 // EdCode 编解码接口
 type EdCode interface {
-	encode(v interface{}) ([]byte, error)
-	decode(data []byte, v interface{}) error
+	Encode(v interface{}) ([]byte, error)
+	Decode(data []byte, v interface{}) error
 }
 
 // JSONEdCode 创建编解码接口的json序列化与反序列化实现
 type JSONEdCode int
 
-func (edcode JSONEdCode) encode(v interface{}) ([]byte, error) {
+func (edcode JSONEdCode) Encode(v interface{}) ([]byte, error) {
 	return json.Marshal(v)
 }
 
-func (edcode JSONEdCode) decode(data []byte, v interface{}) error {
+func (edcode JSONEdCode) Decode(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
 

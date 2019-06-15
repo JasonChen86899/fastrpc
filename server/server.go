@@ -1,7 +1,8 @@
-package rpc
+package server
 
 import (
 	"errors"
+	"fastrpc/common"
 	"fmt"
 	"log"
 	"net"
@@ -64,7 +65,7 @@ func (server *Server) Register(obj interface{}) error {
 
 // ServeConn 每个服务者处理每个rpc请求的入口函数
 func (server *Server) ServeConn(conn net.Conn) {
-	trans := NewTransfer(conn)
+	trans := common.NewTransfer(conn)
 	for {
 		// 从conn读数据
 		data, err := trans.ReadData()
@@ -73,12 +74,12 @@ func (server *Server) ServeConn(conn net.Conn) {
 		}
 
 		// decode
-		var req Request
-		edcode, err := GetEdcode()
+		var req common.Request
+		edcode, err := common.GetEdcode()
 		if err != nil {
 			return
 		}
-		err = edcode.decode(data, &req)
+		err = edcode.Decode(data, &req)
 		if err != nil {
 			return
 		}
@@ -91,7 +92,7 @@ func (server *Server) ServeConn(conn net.Conn) {
 		service := server.ServiceMap[methodStr[0]][methodStr[1]]
 
 		// 构造argv
-		argv, err := req.MakeArgs(edcode, *service)
+		argv, err := MakeArgs(&req, edcode, *service)
 
 		// 构造reply
 		reply := reflect.New(service.ReplyType.Elem())
@@ -105,7 +106,7 @@ func (server *Server) ServeConn(conn net.Conn) {
 		}
 
 		// encode
-		replyData, err := edcode.encode(reply.Elem().Interface())
+		replyData, err := edcode.Encode(reply.Elem().Interface())
 		if err != nil {
 			return
 		}
@@ -134,6 +135,67 @@ func (server *Server) Server(network, address string) error {
 		}
 
 		//开始工作
-		go server.ServeConn(conn)
+		//go server.ServeConn(conn)
+		go server.NewServerConn(conn) // 新处理函数
 	}
+}
+
+// NewServer 实例化一个服务者
+func NewServer() *Server {
+	return &Server{
+		ServiceMap:  make(map[string]map[string]*Service),
+		serviceLock: sync.Mutex{}}
+}
+
+func (server *Server) NewServerConn(conn net.Conn)  {
+	trans := common.NewTransfer(conn)
+	for {
+		requestID, data, err := trans.ServerReadDataByProtocol()
+		if err != nil {
+			log.Println("read each request err")
+			continue
+		}
+		server.handlerEachDataBytes(requestID, data, trans)
+	}
+}
+func (server *Server) handlerEachDataBytes(requestID uint64, data []byte, trans *common.Transfer)  {
+	var req common.Request
+	edcode, err := common.GetEdcode()
+	if err != nil {
+		return
+	}
+	err = edcode.Decode(data, &req)
+	if err != nil {
+		return
+	}
+
+	// 根据MethodName拿到service
+	methodStr := strings.Split(req.MethodName, ".")
+	if len(methodStr) != 2 {
+		return
+	}
+	service := server.ServiceMap[methodStr[0]][methodStr[1]]
+
+	// 构造argv
+	argv, err := MakeArgs(&req, edcode, *service)
+
+	// 构造reply
+	reply := reflect.New(service.ReplyType.Elem())
+
+	// 调用对应的函数
+	function := service.Method.Func
+	out := function.Call([]reflect.Value{reflect.New(server.ServerType.Elem()), argv, reply})
+	if out[0].Interface() != nil {
+		fmt.Println(out[0].Interface())
+		return
+	}
+
+	// encode
+	replyData, err := edcode.Encode(reply.Elem().Interface())
+	if err != nil {
+		return
+	}
+
+	// 向conn写数据
+	trans.ServerWriteDataByProtocol(requestID, replyData)
 }

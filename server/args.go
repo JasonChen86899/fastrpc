@@ -1,30 +1,18 @@
-package rpc
+package server
 
 import (
 	"errors"
+	"fastrpc/common"
 	"fmt"
 	"log"
 	"reflect"
 	"strconv"
 )
 
-// Request 封装rpc底层封装的请求格式
-type Request struct {
-	MethodName string
-	Args       interface{}
-}
-
-// NewRequest 实例化一个新的request结构体指针实例
-func NewRequest(methodName string, args interface{}) *Request {
-	return &Request{
-		MethodName: methodName,
-		Args:       args}
-}
-
 // MakeArgs 返回Args的reflect.Value类型
-func (request *Request) MakeArgs(edcode EdCode, service Service) (reflect.Value, error) {
+func MakeArgs(request *common.Request, edcode common.EdCode, service Service) (reflect.Value, error) {
 	switch edcode.(type) {
-	case JSONEdCode:
+	case common.JSONEdCode:
 		reqArgs := request.Args.(map[string]interface{})
 		argv := reflect.New(service.ArgType)
 		err := MakeArgType(reqArgs, argv)
@@ -110,3 +98,4 @@ func TypeConversion(value string, ntype reflect.Kind) (reflect.Value, error) {
 		return reflect.ValueOf(value), errors.New("unknown type：" + ntype.String())
 	}
 }
+

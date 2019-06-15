@@ -1,3 +1,3 @@
-module srpc
+module fastrpc
 
 go 1.12
