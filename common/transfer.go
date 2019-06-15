@@ -81,9 +81,9 @@ func (trans *Transfer) ClientReadDataByProtocol ()  (uint64, []byte){
 	data = make([]byte, 4)
 	trans.conn.Read(data)
 	// 将数据len解码出来
-	var len int
-	_ = binary.Read(bytes.NewBuffer(data), binary.BigEndian, &len)
-	data = make([]byte, len)
+	var dataLen int32
+	_ = binary.Read(bytes.NewBuffer(data), binary.BigEndian, &dataLen)
+	data = make([]byte, dataLen)
 	// 从conn读取数据
 	trans.conn.Read(data)
 	return requestID, data
@@ -91,13 +91,13 @@ func (trans *Transfer) ClientReadDataByProtocol ()  (uint64, []byte){
 
 func (trans *Transfer) ServerReadDataByProtocol () (uint64, []byte, error) {
 	data := make([]byte, int32(len(ProtocolHead)))
-	i, err := trans.conn.Read(data)
+	_, err := trans.conn.Read(data)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	// 验证头部
-	if string(i) != string(ProtocolHead) {
+	if string(data) != string(ProtocolHead) {
 		return 0, nil, err
 	}
 	data = make([]byte, 8) // 初始化一个4字节的暂时存放数据的数组
@@ -117,9 +117,9 @@ func (trans *Transfer) ServerReadDataByProtocol () (uint64, []byte, error) {
 		return 0, nil, err
 	}
 	// 将数据len解码出来
-	var len int
-	_ = binary.Read(bytes.NewBuffer(data), binary.BigEndian, &len)
-	data = make([]byte, len)
+	var dataLen int32
+	_ = binary.Read(bytes.NewBuffer(data), binary.BigEndian, &dataLen)
+	data = make([]byte, dataLen)
 	// 从conn读取数据
 	_, err = trans.conn.Read(data)
 	if err != nil {
@@ -132,7 +132,7 @@ func (trans *Transfer) ServerReadDataByProtocol () (uint64, []byte, error) {
 func (trans *Transfer) ServerWriteDataByProtocol(requestID uint64, data []byte)  {
 	tempByteBuffer := bytes.NewBuffer([]byte{})
 	_ = binary.Write(tempByteBuffer, binary.BigEndian, requestID)
-	_ = binary.Write(tempByteBuffer, binary.BigEndian, len(data))
+	_ = binary.Write(tempByteBuffer, binary.BigEndian, int32(len(data)))
 	tempByteBuffer.Write(data)
 
 	_, _ = trans.conn.Write(tempByteBuffer.Bytes())

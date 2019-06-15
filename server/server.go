@@ -150,6 +150,7 @@ func NewServer() *Server {
 func (server *Server) NewServerConn(conn net.Conn)  {
 	trans := common.NewTransfer(conn)
 	for {
+		// 长链接轮训处理
 		requestID, data, err := trans.ServerReadDataByProtocol()
 		if err != nil {
 			log.Println("read each request err")
