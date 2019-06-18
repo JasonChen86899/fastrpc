@@ -11,12 +11,6 @@ import (
 	"sync"
 )
 
-type mrpc struct {
-}
-
-func (r *mrpc) GetProfile(userName string) {
-	// get from redis
-}
 
 // Service 封装每个rpc注册服务的属性
 type Service struct {
@@ -63,9 +57,10 @@ func (server *Server) Register(obj interface{}) error {
 	return nil
 }
 
+//@deprecated
 // ServeConn 每个服务者处理每个rpc请求的入口函数
 func (server *Server) ServeConn(conn net.Conn) {
-	trans := common.NewTransfer(conn)
+	trans := NewTransfer(conn)
 	for {
 		// 从conn读数据
 		data, err := trans.ReadData()
@@ -148,7 +143,7 @@ func NewServer() *Server {
 }
 
 func (server *Server) NewServerConn(conn net.Conn)  {
-	trans := common.NewTransfer(conn)
+	trans := NewTransfer(conn)
 	for {
 		// 长链接轮训处理
 		requestID, data, err := trans.ServerReadDataByProtocol()
@@ -159,7 +154,7 @@ func (server *Server) NewServerConn(conn net.Conn)  {
 		server.handlerEachDataBytes(requestID, data, trans)
 	}
 }
-func (server *Server) handlerEachDataBytes(requestID uint64, data []byte, trans *common.Transfer)  {
+func (server *Server) handlerEachDataBytes(requestID uint64, data []byte, trans *Transfer)  {
 	var req common.Request
 	edcode, err := common.GetEdcode()
 	if err != nil {

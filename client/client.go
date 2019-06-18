@@ -19,6 +19,7 @@ func (client *Client) Close() {
 	client.conn.Close()
 }
 
+//@deprecated
 // Call rpc客户端发起远程函数请求(rpc)的入口函数
 func (client *Client) Call(methodName string, req interface{}, reply interface{}) error {
 	// 开启协程锁
@@ -40,7 +41,7 @@ func (client *Client) Call(methodName string, req interface{}, reply interface{}
 	}
 
 	// write
-	trans := common.NewTransfer(client.conn)
+	trans := NewTransfer(client.conn)
 	_, err = trans.WriteData(data)
 	if err != nil {
 		log.Println(err.Error())
@@ -64,7 +65,7 @@ func (client *Client) Call(methodName string, req interface{}, reply interface{}
 }
 
 func (client *Client) SendReqByProtocol(methodName string, req interface{}, res interface{})  {
-	trans := common.NewTransfer(client.conn)
+	trans := NewTransfer(client.conn)
 	request := common.NewRequest(methodName, req)
 	edCode, _ := common.GetEdcode()
 	reqBytesData, _ := edCode.Encode(request)
@@ -74,10 +75,10 @@ func (client *Client) SendReqByProtocol(methodName string, req interface{}, res 
 
 // 内部函数
 func (client *Client) loopReceiveResponseByProtocol()  {
-	trans := common.NewTransfer(client.conn)
+	trans := NewTransfer(client.conn)
 	for {
 		requestID, bytes := trans.ClientReadDataByProtocol()
-		if channel ,ok := common.ReqResMapping.Load(requestID); ok {
+		if channel ,ok := ReqResMapping.Load(requestID); ok {
 			channel.(chan interface {}) <- bytes
 		} else {
 			log.Println("requestID has no channel")

@@ -4,6 +4,7 @@ import (
 	"fastrpc/client"
 	"fastrpc/server"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 )
@@ -15,9 +16,15 @@ type Args struct {
 
 }
 
-func (s *ServerTest) Print(args Args, reValue *string ) interface{} {
+func (s *ServerTest) Print1(args Args, reValue *string ) interface{} {
 
-	*reValue = "success"
+	*reValue = "success_1"
+	return nil
+}
+
+func (s *ServerTest) Print2(args Args, reValue *string ) interface{} {
+
+	*reValue = "success_2"
 	return nil
 }
 
@@ -33,7 +40,33 @@ func Test_Fastrpc(t *testing.T) {
 		return
 	}
 
+	waitGroup := sync.WaitGroup{}
+	waitGroup.Add(7)
+	go showReturnValue1(clientTest, &waitGroup)
+	go showReturnValue2(clientTest, &waitGroup)
+	go showReturnValue1(clientTest, &waitGroup)
+	go showReturnValue2(clientTest, &waitGroup)
+	go showReturnValue1(clientTest, &waitGroup)
+	go showReturnValue2(clientTest, &waitGroup)
+
 	var s string
-	clientTest.SendReqByProtocol("ServerTest.Print", Args{}, &s)
+	clientTest.SendReqByProtocol("ServerTest.Print1", Args{}, &s)
+	waitGroup.Done()
 	fmt.Println(s)
+
+	waitGroup.Wait()
+}
+
+func showReturnValue1(client *client.Client, waitGroup *sync.WaitGroup)  {
+	var s string
+	client.SendReqByProtocol("ServerTest.Print1", Args{}, &s)
+	fmt.Println(s)
+	waitGroup.Done()
+}
+
+func showReturnValue2(client *client.Client, waitGroup *sync.WaitGroup)  {
+	var s string
+	client.SendReqByProtocol("ServerTest.Print2", Args{}, &s)
+	fmt.Println(s)
+	waitGroup.Done()
 }
